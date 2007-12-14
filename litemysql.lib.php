@@ -2,7 +2,7 @@
 
 /*
 
-   Class: LiteMySQL v1.0
+   Class: LiteMySQL v1.0.1
    http://code.google.com/p/litemysql/
 
    Simple & easy to use class to automate the repetative & boring stuff.
