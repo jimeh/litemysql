@@ -3,7 +3,7 @@ LiteMySQL 1.0.1
 Date: 14-Dec-2007
 
 - Fixed an issue with conditions building
-  which didn't properly escapse special
+  which didn't properly escape special
   characters, leaving yourself open to
   remote SQL injection if passing direct
   user-input into a condition.
