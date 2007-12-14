@@ -633,7 +633,7 @@ class LiteMySQL {
 				} elseif ( preg_match('/^[0-9]+$/', $value) ) {
 					$cond[] = "`id` = '".$value."'";
 				} else {
-					$cond[] = $value;
+					$cond[] = $this->sql_quote($value);
 				}
 			}
 			$operator = ( !empty($options['operator']) ) ? $options['operator'] : 'AND' ;
@@ -693,6 +693,8 @@ class LiteMySQL {
 			$column = $this->get_column_type($column);
 		}
 		if ( ($column == 'integer' || $column == 'float') && preg_match('/^[0-9\-\.]+$/', $string) ) {
+			return $string;
+		} elseif ( preg_match('/^[0-9\-\.]+$/', $string) ) {
 			return $string;
 		} else {
 			return "'".addslashes($string)."'";
