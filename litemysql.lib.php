@@ -219,7 +219,6 @@ class LiteMySQL {
 		if ( $username !== null ) $this->username = $username;
 		if ( $password !== null ) $this->password = $password;
 		if ( $database !== null ) $this->database = $database;
-		// if ( $table !== null ) $this->table = $table;
 		
 		if ( $this->host !== null ) {
 			
@@ -243,11 +242,11 @@ class LiteMySQL {
 				if ( $this->resource !== false ) {
 					$this->connected = true;
 					if ( $this->database !== null ) $this->select_db($this->database);
-					if ( $table !== null ) { $this->select_table($table);
+					if ( $table !== null ) $this->select_table($table);
 					return true;
 				}
 			}
-
+	
 		}
 		
 		return false;
