@@ -1,3 +1,29 @@
+LiteMySQL 1.0.2
+-----------------------------------
+Date: 16-Dec-2007
+
+- Fixed an issue which made using the same
+  instance of LiteMySQL not play very nice
+  at all when used with multiple tables.
+  use the select_table() function to
+  select and/or change the current table.
+
+- find(), update(), and delete() functions
+  default to only effect one row (LIMIT 1).
+  This should be configurable with the 
+  options parameter, but thanks to some
+  stupid code on my behalf, it was simply
+  overridden if it was set manually.
+
+- load_settings() function can now take a
+  filename with a configuration array, or
+  an array with the settings directly as
+  input. Rather than only being able to
+  load settings from a file.
+
+-----------------------------------
+
+
 LiteMySQL 1.0.1
 -----------------------------------
 Date: 14-Dec-2007

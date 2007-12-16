@@ -2,7 +2,7 @@
 
 /*
 
-   Class: LiteMySQL v1.0.1
+   Class: LiteMySQL v1.0.2
    http://code.google.com/p/litemysql/
 
    Simple & easy to use class to automate the repetative & boring stuff.
@@ -180,7 +180,7 @@ class LiteMySQL {
 				if ( $this->connect() ) {
 					// set or override database and table settings
 					if ( !empty($args[3]) ) $this->select_db($args[3]);
-					if ( !empty($args[4]) ) $this->table = $args[4];
+					if ( !empty($args[4]) ) $this->select_table($args[4]);
 				}
 			}
 		}
@@ -219,7 +219,7 @@ class LiteMySQL {
 		if ( $username !== null ) $this->username = $username;
 		if ( $password !== null ) $this->password = $password;
 		if ( $database !== null ) $this->database = $database;
-		if ( $table !== null ) $this->table = $table;
+		// if ( $table !== null ) $this->table = $table;
 		
 		if ( $this->host !== null ) {
 			
@@ -233,9 +233,8 @@ class LiteMySQL {
 				$this->resource = call_user_func_array($connect_function, array($this->host, $this->username, $this->password));
 				if ( $this->resource !== false ) {
 					$this->connected = true;
-					if ( $this->database !== null ) {
-						$this->select_db($this->database);
-					}
+					if ( $this->database !== null ) $this->select_db($this->database);
+					if ( $table !== null ) $this->select_table($table);
 					self::$resources[$this->connection_id] = &$this->resource;
 					return true;
 				}
@@ -243,9 +242,8 @@ class LiteMySQL {
 				$this->resource = &self::$resources[$this->connection_id];
 				if ( $this->resource !== false ) {
 					$this->connected = true;
-					if ( $this->database !== null ) {
-						$this->select_db($this->database);
-					}
+					if ( $this->database !== null ) $this->select_db($this->database);
+					if ( $table !== null ) { $this->select_table($table);
 					return true;
 				}
 			}
@@ -279,23 +277,32 @@ class LiteMySQL {
 	 */
 	function select_table ($table = null) {
 		if ( $table !== null ) $this->table = $table;
+		if ( $this->columns !== null ) {
+			$this->columns = null;
+		}
 	}
 	
 	
 	/**
 	 * Load settings from file
-	 * @param   file       the php file containing an array
-	 * @param   variable   the variable name to load the array from
+	 * @param   input      filename of config file, or an array with settings
+	 * @param   variable   the variable name to load the array from when loading a config file
 	 * @return  true or false
 	 */
-	function load_settings ($file = null, $variable = null) {
-		if ( $file !== null && is_file($file) ) {
+	function load_settings ($input = null, $variable = null) {
+		if ( is_array($input) && count($input) ) {
+			$properties = array('host', 'username', 'password', 'database', 'table', 'persistent');
+			foreach( $properties as $value ) {
+				if ( array_key_exists($value, $input) && $input[$value] != '' ) $this->$value = $input[$value];
+			}
+			return true;
+		} elseif ( is_string($input) && $input !== null && is_file($input) ) {
 			if ( $variable === null ) $variable = $this->config_var;
 			
-			include($file);
+			include($input);
 			$settings = &$$variable;
+			
 			$properties = array('host', 'username', 'password', 'database', 'table', 'persistent');
-
 			foreach( $properties as $value ) {
 				if ( array_key_exists($value, $settings) ) $this->$value = $settings[$value];
 			}
@@ -318,7 +325,9 @@ class LiteMySQL {
 	 * @return  array with result row or false
 	 */
 	function find ($conditions = null, $options = array()) {
-		$options['limit'] = 1;
+		if ( !array_key_exists('limit', $options) ) {
+			$options['limit'] = 1;
+		}
 		$sql = $this->build_find_query($conditions, $options);
 		$result = $this->query($sql);
 		if ( $row = mysql_fetch_assoc($result) ) {
@@ -379,7 +388,9 @@ class LiteMySQL {
 	 * @return  true or false
 	 */
 	function update ($conditions = null, $input = array(), $options = array()) {
-		$options['limit'] = 1;
+		if ( !array_key_exists('limit', $options) ) {
+			$options['limit'] = 1;
+		}
 		return $this->update_all($conditions, $input, $options);
 	}
 	
@@ -402,7 +413,9 @@ class LiteMySQL {
 	 * @return  true or false
 	 */
 	function delete ($conditions = null, $options = array()) {
-		$options['limit'] = 1;
+		if ( !array_key_exists('limit', $options) ) {
+			$options['limit'] = 1;
+		}
 		return $this->delete_all($conditions, $options);
 	}
 	
@@ -743,6 +756,7 @@ class LiteMySQL {
 	 */
 	function get_columns () {
 		if ( $this->connected && $this->selected_database != null && $this->table != null ) {
+			$this->columns = null;
 			$sql = 'SHOW COLUMNS FROM `'.$this->table.'`;';
 			$result = $this->query($sql);
 			if ( mysql_num_rows($result) > 0 ) {
