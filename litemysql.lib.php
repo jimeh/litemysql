@@ -2,7 +2,7 @@
 
 /*
 
-   Class: LiteMySQL v1.0.2
+   Class: LiteMySQL v1.1
    http://code.google.com/p/litemysql/
 
    Simple & easy to use class to automate the repetative & boring stuff.
@@ -11,7 +11,7 @@
 
 
 
-   Copyright (c) 2007 Jim Myhrberg (jim@zydev.info).
+   Copyright (c) 2009 Jim Myhrberg (contact@jimeh.me).
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -36,18 +36,20 @@
    Code Examples
    ----------------
    # general usage
-   $sql = new litemysql('host', 'username', 'password', 'database', 'table');
+   $sql = new litemysql('host', 'username', 'password', 'database', 'table', 'encoding');
    $rows = $sql->find_all();
    ----------------
    # config.php file
    <?php
    $database_settings = array(
-   	'host' = 'localhost',
-   	'username' = 'user',
-   	'password' = 'pass',
-   	'database' = 'database',
-   	'table', = 'table',
-   	'persistent' = false,
+   	'host' => 'localhost',
+   	'username' => 'user',
+   	'password' => 'pass',
+   	'database' => 'database',
+   	'table' => 'table',
+   	'encoding' => 'utf8',
+   	'primary_key' => 'user_id',
+   	'persistent' => false,
    );
    ?>
    ----------------
@@ -62,6 +64,12 @@
    $result = $sql->find(3);
    $result = $sql->find(array('id' => 3));
    $result = $sql->find('`id` = 3');
+   ----------------
+   # custom primary keys
+   # - change the default column name used by the condition builder
+   $sql->primary_key = 'user_id';
+   $result = $sql->find(3);
+   # creates a "`user_id` = 3" WHERE clause in the query
    ----------------
    # insert a single row
    $sql->insert(
@@ -129,6 +137,8 @@ class LiteMySQL {
 		$database = null,
 		$table = null,
 		$persistent = false,
+		$primary_key = 'id',
+		$encoding = 'utf8',
 		$config_var = 'database_settings',
 	
 		
@@ -139,6 +149,8 @@ class LiteMySQL {
 		$connected = false,
 		$selected_database = null,
 	
+		$last_insert_id = null,
+		
 		$enable_logging = false,
 		$query_log = array(),
 	
@@ -159,6 +171,7 @@ class LiteMySQL {
 	 * @param   password    mysql password
 	 * @param   database    database to select
 	 * @param   table       table to use
+	 * @param   encoding    the encoding type to use (defaults is utf8)
 	 * @return  nothing
 	 */
 	function __construct () {
@@ -207,14 +220,15 @@ class LiteMySQL {
 	
 	/**
 	 * Connect to a MySQL server and/or select database and/or table
-	 * @param   host       server host or configuration file
-	 * @param   username   mysql username
-	 * @param   password   mysql password
-	 * @param   database   database to select
-	 * @param   table      table to use
+	 * @param   host/file   server host or configuration file
+	 * @param   username    mysql username
+	 * @param   password    mysql password
+	 * @param   database    database to select
+	 * @param   table       table to use
+	 * @param   encoding    the encoding type to use (defaults is utf8)
 	 * @return  nothing
 	 */
-	function connect ($host = null, $username = null, $password = null, $database = null, $table = null) {
+	function connect ($host = null, $username = null, $password = null, $database = null, $table = null, $encoding = null) {
 		if ( $host !== null ) $this->host = $host;
 		if ( $username !== null ) $this->username = $username;
 		if ( $password !== null ) $this->password = $password;
@@ -228,13 +242,23 @@ class LiteMySQL {
 			}
 			
 			if ( !array_key_exists($this->connection_id, self::$resources) ) {
-				$connect_function = ($this->persistent) ? 'mysql_pconnect' : 'mysql_connect' ;
-				$this->resource = call_user_func_array($connect_function, array($this->host, $this->username, $this->password));
+
+				$connect_settings = array($this->host, $this->username, $this->password);
+				$connect_function = 'mysql_connect';
+				if ( !$this->persistent ) {
+					$connect_settings[] = true;
+				} else {	
+					$connect_function = 'mysql_pconnect';
+				}
+				
+				$this->resource = call_user_func_array($connect_function, $connect_settings);
 				if ( $this->resource !== false ) {
 					$this->connected = true;
 					if ( $this->database !== null ) $this->select_db($this->database);
 					if ( $table !== null ) $this->select_table($table);
-					self::$resources[$this->connection_id] = &$this->resource;
+					$this->set_encoding($encoding);
+					//TODO fix table-name conflicts with the database resource name
+					// self::$resources[$this->connection_id] = &$this->resource;
 					return true;
 				}
 			} else {
@@ -281,6 +305,16 @@ class LiteMySQL {
 		}
 	}
 	
+	/**
+	 * Set connection encoding
+	 * @param   encoding   the encoding type to use (defaults is utf8)
+	 * @return  nothing
+	 */
+	function set_encoding ($encoding = null) {
+		if ( !empty($encoding) ) $this->encoding = $encoding;
+		$this->query("SET NAMES '".$this->encoding."';");
+	}
+	
 	
 	/**
 	 * Load settings from file
@@ -290,7 +324,7 @@ class LiteMySQL {
 	 */
 	function load_settings ($input = null, $variable = null) {
 		if ( is_array($input) && count($input) ) {
-			$properties = array('host', 'username', 'password', 'database', 'table', 'persistent');
+			$properties = array('host', 'username', 'password', 'database', 'table', 'persistent', 'encoding');
 			foreach( $properties as $value ) {
 				if ( array_key_exists($value, $input) && $input[$value] != '' ) $this->$value = $input[$value];
 			}
@@ -329,7 +363,7 @@ class LiteMySQL {
 		}
 		$sql = $this->build_find_query($conditions, $options);
 		$result = $this->query($sql);
-		if ( $row = mysql_fetch_assoc($result) ) {
+		if ( $result && $row = mysql_fetch_assoc($result) ) {
 			return $row;
 		}
 		return false;
@@ -344,7 +378,7 @@ class LiteMySQL {
 	 */
 	function find_all ($conditions = null, $options = array(), $index = null) {
 		$sql = $this->build_find_query($conditions, $options);
-
+		
 		$result = $this->query($sql);
 		if ( mysql_num_rows($result) > 0 ) {
 			$return = array();
@@ -376,7 +410,9 @@ class LiteMySQL {
 	 */
 	function insert ($input = null) {
 		$sql = $this->build_insert_query($input);
-		return ( $sql !== false ) ? $this->query($sql) : false ;
+		$result = ( $sql !== false ) ? $this->query($sql) : false ;
+		$this->last_insert_id = mysql_insert_id($this->resource);
+		return $result;
 	}
 	
 	/**
@@ -442,6 +478,29 @@ class LiteMySQL {
 		}
 		$options['order_by'] = 'RAND()';
 		return $this->find_all($conditions, $options);
+	}
+	
+	
+	function count ($conditions = null, $options = '') {
+		$query = 'SELECT ';
+		if ( is_array($options) ) {
+			if ( !empty($options['select']) ) $query .= $options['select'].', ';
+			$query .= 'COUNT(*) FROM `'.$this->table.'`';
+			if ( !empty($conditions) ) $query .= $this->build_query_conditions($conditions);
+			if ( !empty($options['group_by']) ) $query .= ' GROUP BY '.$options['group_by'];
+			$query .= ';';
+		} else {	
+			$query .= 'COUNT(*) FROM `'.$this->table.'`';
+			if ( !empty($conditions) ) {
+				$query .= $this->build_query_conditions($conditions);
+			}
+			$query .= ';';
+		}
+		if ( $result = $this->query($query) ) {
+			$count = mysql_fetch_assoc($result);
+			return $count['COUNT(*)'];
+		}
+		return null;
 	}
 
 	
@@ -606,7 +665,7 @@ class LiteMySQL {
 					}
 				}
 				if ( count($values) ) {
-					$limit = (!empty($options['limit'])) ? $options['limit'] : '' ;
+					$limit = (!empty($options['limit'])) ? " LIMIT ".$options['limit'] : '' ;
 					return 'UPDATE `'.$this->table.'` SET '.implode(', ', $values).$conditions.$limit.";";
 				}
 			}
@@ -633,7 +692,7 @@ class LiteMySQL {
 		}
 		if ( is_string($conditions) || is_int($conditions) || is_float($conditions) ) {
 			if ( preg_match('/^[0-9]+$/', trim($conditions)) ) {
-				return " WHERE `id` = '".$conditions."'";
+				return " WHERE `".$this->primary_key."` = ".$conditions;
 			} else {
  				return ' WHERE '.$conditions;
 			}
@@ -660,30 +719,41 @@ class LiteMySQL {
 	 * @return  SQL statements
 	 */
 	function build_query_options ($options) {
-		if ( is_string($options) ) {
-			return ' '.$options;
-		} elseif ( is_array($options) && count($options) ) {
+		if ( $options !== null && $options !== '' ) {
+			if ( is_string($options) ) {
+				return ' '.$options;
+			} elseif ( is_array($options) && count($options) ) {
 			
-			$query = '';
+				$query = '';
+				$query_end = ' ';
 			
-			if ( isset($options['order_by']) && $options['order_by'] != '' ) {
-				$order_by = trim($options['order_by']);
-				$order = '';
-				if ( preg_match('/^(.*)\s(ASC|DESC)$/i', $order_by, $capture) ) {
-					$order = ' '.$capture[2];
-					$order_by = trim($capture[1]);
+				if ( isset($options['order_by']) && isset($options['order']) ) {
+					$options['order'] = $options['order_by'];
+					unset($options['order_by']);
 				}
-				unset($options['order_by']);
-				if ( $order_by != 'RAND()' && strpos($order_by, '`') === false ) $order_by = '`'.$order_by.'`';
-				$query .= ' ORDER BY '.$order_by.$order;
-			}
-			foreach( $options as $key => $value ) {
-				if ($key != 'operator' && $key != 'select') {
-					$query .= ' '.strtoupper($key).' '.$value;
+				if ( isset($options['order']) && $options['order'] != '' ) {
+					$order_by = trim($options['order']);
+					$order = '';
+					if ( preg_match('/^(.*)\s(ASC|DESC)$/i', $order_by, $capture) ) {
+						$order = ' '.$capture[2];
+						$order_by = trim($capture[1]);
+					}
+					unset($options['order']);
+					if ( $order_by != 'RAND()' && strpos($order_by, '`') === false ) $order_by = '`'.$order_by.'`';
+					$query .= ' ORDER BY '.$order_by.$order;
 				}
+				if ( (isset($options['limit']) && $options['limit'] != '') && (isset($options['offset']) && $options['offset'] != '') ) {
+					$query_end .= 'LIMIT '.$options['limit'].' OFFSET '.$options['offset'];
+					unset($options['limit'], $options['offset']);
+				}
+				foreach( $options as $key => $value ) {
+					if ($key != 'operator' && $key != 'select' && $value != '') {
+						$query .= ' '.strtoupper($key).' '.$value;
+					}
+				}
+				return $query.$query_end;
 			}
-			return $query;
-		}
+		}	
 		return '';
 	}
 	

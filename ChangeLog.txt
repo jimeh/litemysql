@@ -1,3 +1,36 @@
+LiteMySQL 1.1
+-----------------------------------
+Date: 21-May-2009
+
+- Added a count() method which simply
+  counts the number of records matching
+  the given conditions.
+
+- Added primary_key support so you can
+  specify a custom primary key, rather
+  than defaulting to the "id" column.
+
+- Added last_insert_id property containing
+  the primary_key value from the last
+  insert.
+
+- Added support for specifying connection
+  encoding. Defaults to "utf8".
+
+- The "order_by" option is now called
+  "order" for reasons of sanity.
+
+- Connection resources no longer collide
+  between multiple instances of the
+  LiteMySQL class. Currently connection
+  resources are not reused at all. It's
+  a temporary fix for now.
+
+- Fixed a few small bugs.
+
+-----------------------------------
+
+
 LiteMySQL 1.0.2
 -----------------------------------
 Date: 16-Dec-2007
