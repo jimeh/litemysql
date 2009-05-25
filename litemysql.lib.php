@@ -2,7 +2,7 @@
 
 /*
 
-   Class: LiteMySQL v1.1.1
+   Class: LiteMySQL v1.1.2
    http://code.google.com/p/litemysql/
 
    Simple & easy to use class to automate the repetative & boring stuff.
@@ -154,8 +154,6 @@ class LiteMySQL {
 		$enable_logging = false,
 		$query_log = array(),
 	
-		$columns = null,
-	
 		$connection_id = null,
 		$resource = null;
 	
@@ -203,7 +201,7 @@ class LiteMySQL {
 	 * Internal function
 	 */
 	function __get ($key) {
-		if ( $key == 'columns' && !is_array($this->columns) ) {
+		if ( $key == 'columns' && (!property_exists($this, $key) || !is_array($this->columns)) ) {
 			$this->get_columns();
 			return $this->columns;
 		} else {
@@ -300,8 +298,8 @@ class LiteMySQL {
 	 */
 	function select_table ($table = null) {
 		if ( $table !== null ) $this->table = $table;
-		if ( $this->columns !== null ) {
-			$this->columns = null;
+		if ( property_exists($this, "columns") ) {
+			unset($this->columns);
 		}
 	}
 	
@@ -478,6 +476,25 @@ class LiteMySQL {
 		}
 		$options['order_by'] = 'RAND()';
 		return $this->find_all($conditions, $options);
+	}
+	
+	/**
+	* Increment an integer column by count
+	* @param   conditions   conditions to match, accepted input is string, int, or array
+	* @param   column       the name of the column to increment
+	* @param   count        how much to increment column with
+	* @param   options      additional options to pass in the query
+	* @return  true or false
+	*/
+	function increment ($conditions = null, $column = null, $count = null, $options = array()) {
+		if ( !array_key_exists('limit', $options) ) {
+			$options['limit'] = 1;
+		}
+ 		if ( $count == null ) {
+			$count = 1;
+		}
+		$sql = $this->build_increment_query($conditions, $column, $count, $options);
+		return ( $sql !== false ) ? $this->query($sql) : false ;
 	}
 	
 	/**
@@ -678,6 +695,28 @@ class LiteMySQL {
 		return false;
 	}
 	
+	/**
+	* Build increment query - used by increment method
+	* @param   conditions   conditions to match, accepted input is string, int, or array
+	* @param   column       the name of the column to increment
+	* @param   count        how much to increment column with
+	* @param   options      additional options to pass in the query
+	* @return  true or false
+	*/
+	function build_increment_query ($conditions = null, $column = null, $count = null, $options = array()) {
+		if ( $column != null && $column != "" ) {
+			$conditions = $this->build_query_conditions($conditions, $options);
+			if ( array_key_exists($column, $this->columns) ) {
+				if ( substr($this->columns[$column]['Type'], 0, 3) == "int" ) {
+					$limit = (!empty($options['limit'])) ? " LIMIT ".$options['limit'] : '' ;
+					$count = (is_numeric($count) || is_int($count)) ? $count : 1 ;
+					return 'UPDATE `'.$this->table.'` SET `'.$column.'` = `'.$column.'` + '.$count.' '.$conditions.$limit.";";
+				}
+			}
+		}
+		return false;
+	}
+	
 	
 	
 	
@@ -834,6 +873,7 @@ class LiteMySQL {
 			$sql = 'SHOW COLUMNS FROM `'.$this->table.'`;';
 			$result = $this->query($sql);
 			if ( mysql_num_rows($result) > 0 ) {
+				$this->columns = array();
 				while ($row = mysql_fetch_assoc($result)) {
 					$this->columns[$row['Field']] = $row;
 				}
