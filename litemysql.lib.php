@@ -2,7 +2,7 @@
 
 /*
 
-   Class: LiteMySQL v1.1
+   Class: LiteMySQL v1.1.1
    http://code.google.com/p/litemysql/
 
    Simple & easy to use class to automate the repetative & boring stuff.
@@ -374,7 +374,7 @@ class LiteMySQL {
 	 * @param   conditions   conditions to match, accepted input is string, int, or array
 	 * @param   options      additional options to pass in the query
 	 * @param   index        row value to use as array key for each row
-	 * @return  array with result rows or false
+	 * @return  array with result rows or null
 	 */
 	function find_all ($conditions = null, $options = array(), $index = null) {
 		$sql = $this->build_find_query($conditions, $options);
@@ -400,7 +400,7 @@ class LiteMySQL {
 			}
 		}
 		
-		return false;
+		return null;
 	}
 	
 	/**
@@ -480,7 +480,12 @@ class LiteMySQL {
 		return $this->find_all($conditions, $options);
 	}
 	
-	
+	/**
+	 * Count number of matching rows to specified conditions and options
+	 * @param   conditions   conditions to match, accepted input is string, int, or array
+	 * @param   options      additional options to pass in the query
+	 * @return  integer with row count or null
+	 */
 	function count ($conditions = null, $options = '') {
 		$query = 'SELECT ';
 		if ( is_array($options) ) {
@@ -498,7 +503,7 @@ class LiteMySQL {
 		}
 		if ( $result = $this->query($query) ) {
 			$count = mysql_fetch_assoc($result);
-			return $count['COUNT(*)'];
+			return (int)$count['COUNT(*)'];
 		}
 		return null;
 	}

@@ -1,3 +1,20 @@
+LiteMySQL 1.1.1
+-----------------------------------
+Date: 25-May-2009
+
+- Changed the find_all() method now
+  returns null instead of false if now
+  rows are returned. This is so that you
+  can run the result through count(), which
+  evals false to 1, and null to 0.
+
+- Changed the count() method to return
+  an integer with the count value rather
+  than a string.
+
+-----------------------------------
+
+
 LiteMySQL 1.1
 -----------------------------------
 Date: 21-May-2009
