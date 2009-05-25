@@ -3,7 +3,7 @@ LiteMySQL 1.1.2
 Date: 25-May-2009
 
 - Using $sql->columns to get the list of
-  table columns should now always works.
+  table columns should now always work.
 
 - Added an increment() method to easily
   bump a column's integer value up by 1,
@@ -17,7 +17,7 @@ LiteMySQL 1.1.1
 Date: 25-May-2009
 
 - Changed the find_all() method now
-  returns null instead of false if now
+  returns null instead of false if no
   rows are returned. This is so that you
   can run the result through count(), which
   evals false to 1, and null to 0.
