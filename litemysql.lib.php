@@ -2,7 +2,7 @@
 
 /*
 
-   LiteMySQL v1.2
+   LiteMySQL v1.2.0
    http://github.com/jimeh/litemysql
 
    Very light-weight and simple ORM-like MySQL library for PHP. Kind of like
