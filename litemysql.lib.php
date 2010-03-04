@@ -5,31 +5,35 @@
    Class: LiteMySQL v1.1.2
    http://code.google.com/p/litemysql/
 
-   Simple & easy to use class to automate the repetative & boring stuff.
+   Very light-weight and simple ORM-like MySQL library for PHP. Kind of like
+   ActiveRecord's little brother.
 
    Requires PHP 5.0 or later.
 
 
 
-   Copyright (c) 2009 Jim Myhrberg (contact@jimeh.me).
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   THE SOFTWARE.
+   (The MIT License)
+   
+   Copyright (c) 2010 Jim Myhrberg.
+   
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   'Software'), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+   
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+   
+   THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
@@ -378,8 +382,8 @@ class LiteMySQL {
 		$sql = $this->build_find_query($conditions, $options);
 		
 		$result = $this->query($sql);
+		$return = array();
 		if ( mysql_num_rows($result) > 0 ) {
-			$return = array();
 			while ($row = mysql_fetch_assoc($result)) {
 				if ( $index !== null && isset($row[$index]) ) {
 					if ( !isset($return[$row[$index]]) ) {
@@ -391,14 +395,9 @@ class LiteMySQL {
 				} else {
 					$return[] = $row;
 				}
-
 			}
-			if ( !empty($return) ) {
-				return $return;
-			}
-		}
-		
-		return null;
+		}	
+		return $return;
 	}
 	
 	/**
@@ -486,7 +485,7 @@ class LiteMySQL {
 	* @param   options      additional options to pass in the query
 	* @return  true or false
 	*/
-	function increment ($conditions = null, $column = null, $count = null, $options = array()) {
+	function increment ($conditions, $column, $count = 1, $options = array()) {
 		if ( !array_key_exists('limit', $options) ) {
 			$options['limit'] = 1;
 		}
@@ -703,8 +702,8 @@ class LiteMySQL {
 	* @param   options      additional options to pass in the query
 	* @return  true or false
 	*/
-	function build_increment_query ($conditions = null, $column = null, $count = null, $options = array()) {
-		if ( $column != null && $column != "" ) {
+	function build_increment_query ($conditions, $column, $count = 1, $options = array()) {
+		if ( $column != "" ) {
 			$conditions = $this->build_query_conditions($conditions, $options);
 			if ( array_key_exists($column, $this->columns) ) {
 				if ( substr($this->columns[$column]['Type'], 0, 3) == "int" ) {
@@ -743,12 +742,12 @@ class LiteMySQL {
 		} elseif ( is_array($conditions) && !empty($conditions) ) {
 			$cond = array();
 			foreach( $conditions as $key => $value ) {
-				if ( !preg_match('/^[0-9]+$/', $key) ) {
-					$cond[] = '`'.$key."` = '".$value."'";
+				if ( is_array($value) ) {
+					$cond[] = '`'.$key."` IN (".implode(",", $this->sql_quote($value)).")";
+				} elseif ( !preg_match('/^[0-9]+$/', $key) ) {
+					$cond[] = '`'.$key."` = ".$this->sql_quote($value);
 				} elseif ( preg_match('/^[0-9]+$/', $value) ) {
-					$cond[] = "`id` = '".$value."'";
-				} else {
-					$cond[] = $this->sql_quote($value);
+					$cond[] = "`.$this->primary_key.` = '".$value."'";
 				}
 			}
 			$operator = ( !empty($options['operator']) ) ? $options['operator'] : 'AND' ;
@@ -767,16 +766,17 @@ class LiteMySQL {
 			if ( is_string($options) ) {
 				return ' '.$options;
 			} elseif ( is_array($options) && count($options) ) {
-			
+				
 				$query = '';
 				$query_end = ' ';
-			
-				if ( isset($options['order_by']) && isset($options['order']) ) {
-					$options['order'] = $options['order_by'];
-					unset($options['order_by']);
+				
+				if ( !empty($options['group']) ){
+					$query .= ' GROUP BY '.$this->sql_quote_options($options['group_by']);
+					unset($options['group']);
 				}
+				
 				if ( isset($options['order']) && $options['order'] != '' ) {
-					$order_by = trim($options['order']);
+					$order_by = trim($this->sql_quote_options($options['order']));
 					$order = '';
 					if ( preg_match('/^(.*)\s(ASC|DESC)$/i', $order_by, $capture) ) {
 						$order = ' '.$capture[2];
@@ -786,13 +786,17 @@ class LiteMySQL {
 					if ( $order_by != 'RAND()' && strpos($order_by, '`') === false ) $order_by = '`'.$order_by.'`';
 					$query .= ' ORDER BY '.$order_by.$order;
 				}
-				if ( (isset($options['limit']) && $options['limit'] != '') && (isset($options['offset']) && $options['offset'] != '') ) {
-					$query_end .= 'LIMIT '.$options['limit'].' OFFSET '.$options['offset'];
-					unset($options['limit'], $options['offset']);
+				if ( (isset($options['limit']) && $options['limit'] != '') ) {
+					$query_end .= 'LIMIT '.$this->sql_quote_options($options['limit']);
+					if ( (isset($options['offset']) && $options['offset'] != '') ) {
+						$query_end .= ' OFFSET '.$this->sql_quote_options($options['offset']);
+						unset($options['offset']);
+					}
+					unset($options['limit']);
 				}
 				foreach( $options as $key => $value ) {
 					if ($key != 'operator' && $key != 'select' && $value != '') {
-						$query .= ' '.strtoupper($key).' '.$value;
+						$query .= ' '.strtoupper($key).' '.$this->sql_quote_options($value);
 					}
 				}
 				return $query.$query_end;
@@ -814,17 +818,34 @@ class LiteMySQL {
 	 * @param   field    column name
 	 * @return  escaped string which is safe for SQL injection
 	 */
-	function sql_quote ($string, $column = null) {
+	function sql_quote ($input, $column = null) {
+		if ( is_array($input) ) {
+			$return = array();
+			foreach( $input as $key => $value ) {
+				$return[$key] = $this->sql_quote($value, $column);
+			}
+			return $return;
+		}
 		if ( $column !== null ) {
 			$column = $this->get_column_type($column);
 		}
-		if ( ($column == 'integer' || $column == 'float') && preg_match('/^[0-9\-\.]+$/', $string) ) {
-			return $string;
-		} elseif ( preg_match('/^[0-9\-\.]+$/', $string) ) {
-			return $string;
+		if ( ($column == 'integer' || $column == 'float') && preg_match('/^[0-9\-\.]+$/', $input) ) {
+			return $input;
+		} elseif ( preg_match('/^[0-9\-\.]+$/', $input) ) {
+			return $input;
 		} else {
-			return "'".addslashes($string)."'";
+			return "'".addslashes($input)."'";
 		}
+	}
+	
+	/**
+	 * Escape special characters in SQL statement values
+	 * @param   string   data to escape
+	 * @return  safe statement value
+	 */
+	function sql_quote_options ($string) {
+		$split = explode(";", $string, 2);
+		return $split[0];
 	}
 
 	/**
