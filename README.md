@@ -76,17 +76,17 @@ Using the `$options` argument, you can specify `LIMIT`, `OFFSET`, `ORDER BY`, an
 ## Methods
 
 
-### `find( $conditions, $options = array() )`
+### find( $conditions, $options = array() )
 
 Retrieves a single record matching `$conditions`, or `false` if no record is found.
 
 
-### `find_all( $conditions, $options = array() )`
+### find_all( $conditions, $options = array() )
 
 Works just like `find()`, but retrieves all matching rows. Can be limited with the `limit` option. Returns an empty array if no records matched the specified conditions.
 
 
-### `insert( $input )`
+### insert( $input )
 
 Takes an array as input. To insert a single record, the array should have keys matching the columns. To insert multiple records, `$input` must be an array with arrays containing column keys.
 
@@ -120,7 +120,7 @@ Insert multiple records:
     );
 
 
-### `update( $condtions, $input = array(), $options = array() )`
+### update( $condtions, $input = array(), $options = array() )
 
 Updates a single record matching `$conditions`, with the same input format as `insert()` takes for a single record insert.
 
@@ -129,7 +129,7 @@ Updates a single record matching `$conditions`, with the same input format as `i
     $sql->update(4, array('author' => 'James Dole'));
 
 
-### `update_all( $condtions, $input = array(), $options = array() )`
+### update_all( $condtions, $input = array(), $options = array() )
 
 Works just like `update()`, but it updates all records matching `$conditions`.
 
@@ -140,7 +140,7 @@ Change author "John Doe" to "John Smith".
     $sql->update_all(array('author' => 'John Doe'), array('author' => 'John Smith'));
 
 
-### `delete( $conditions, $options = array() )`
+### delete( $conditions, $options = array() )
 
 Deletes a single record matching `$conditions`.
 
@@ -149,7 +149,7 @@ Deletes a single record matching `$conditions`.
     $sql->delete(4);
 
 
-### `delete_all( $conditions, $options = array() )`
+### delete_all( $conditions, $options = array() )
 
 Deletes all records matching `$conditions`.
 
@@ -158,7 +158,7 @@ Deletes all records matching `$conditions`.
     $sql->delete_all(array('author' => 'John Smith'));
 
 
-### `count( $conditions, $options = array() )`
+### count( $conditions, $options = array() )
 
 Counts how many records match `$conditions`.
 
@@ -167,12 +167,12 @@ Counts how many records match `$conditions`.
     $result = $sql->count(array('author' => 'John Smith'));
 
 
-### `random( $limit = null, $conditions = null )`
+### random( $limit = null, $conditions = null )
 
 Fetches X number of records from table sorted by random matching `$conditions`. Use `$limit` to specify how many records to retrieve. Be warned that this method uses `ORDER BY RAND()` which can be very slow on large tables.
 
 
-### `increment( $conditions, $column, $count = 1, $options = array() )`
+### increment( $conditions, $column, $count = 1, $options = array() )
 
 Increment a integer column by `$count` on a single record matching `$conditions`. `$count` defaults to `1` if not specified.
 
@@ -183,17 +183,17 @@ To decrement instead of increment, simply specify a negative `$count` value.
     $sql->increment(array('slug' => 'hello-world'), 'views');
 
 
-### `query( $query )`
+### query( $query )
 
 Perform a SQL query.
 
 
-### `optimize()`
+### optimize()
 
 Performs an `OPTIMIZE` query on the current table.
 
 
-### `truncate( $are_you_sure = false )`
+### truncate( $are_you_sure = false )
 
 Truncates the table if `$are_you_sure` is true. **WARNING**: This removes ALL records from the current table.
 
