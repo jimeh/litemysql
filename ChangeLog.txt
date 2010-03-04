@@ -1,3 +1,31 @@
+LiteMySQL 1.2
+-----------------------------------
+Date: 4-Mar-2010
+
+- Fixed two SQL-inject issues.
+
+- Fixed an issue with using the
+  primary-key option.
+
+- Fixed limit and offset options so
+  limit is usable without offset.
+
+- find_all() returns an empty array if
+  no records match conditions.
+
+- Conditions can now look for multiple
+  matching values.
+
+  For Example:
+  find_all(array('id' => array(1,3)))
+
+  Will create a WHERE statement that
+  looks like:
+  WHERE `id` IN(1,3)
+
+-----------------------------------
+
+
 LiteMySQL 1.1.2
 -----------------------------------
 Date: 25-May-2009

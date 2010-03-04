@@ -2,8 +2,8 @@
 
 /*
 
-   Class: LiteMySQL v1.1.2
-   http://code.google.com/p/litemysql/
+   LiteMySQL v1.2
+   http://github.com/jimeh/litemysql
 
    Very light-weight and simple ORM-like MySQL library for PHP. Kind of like
    ActiveRecord's little brother.
