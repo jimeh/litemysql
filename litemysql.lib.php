@@ -831,9 +831,8 @@ class LiteMySQL {
 		}
 		if ( ($column == 'integer' || $column == 'float') && preg_match('/^[0-9\-\.]+$/', $input) ) {
 			return $input;
-		} elseif ( preg_match('/^[0-9\-\.]+$/', $input) ) {
-			return $input;
-		} else {
+		}
+		else {
 			return "'".addslashes($input)."'";
 		}
 	}
